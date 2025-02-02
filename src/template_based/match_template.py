@@ -31,5 +31,5 @@ top_left = min_loc  #Change to max_loc for all except for TM_SQDIFF
 bottom_right = (top_left[0] + w, top_left[1] + h)
 cv2.rectangle(img_gray, top_left, bottom_right, 255, 2)  #White rectangle with thickness 2.
 cv2.imshow("Matched image", img_gray)
-cv2.waitKey()
+cv2.waitKey(0)
 cv2.destroyAllWindows()

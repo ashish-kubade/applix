@@ -49,13 +49,13 @@ def mouse_crop(event, x, y, flags, param):
             cv2.waitKey(0)
 cv2.namedWindow("image")
 cv2.setMouseCallback("image", mouse_crop)
-while True:
-    i = image.copy()
-    if not cropping:
-        cv2.imshow("image", image)
-    elif cropping:
-        cv2.rectangle(i, (x_start, y_start), (x_end, y_end), (255, 255, 0), 3)
-    cv2.imshow("image", i)
-    cv2.waitKey(0)
-    # close all open windows
-    cv2.destroyAllWindows()
+# while True:
+#     i = image.copy()
+#     if not cropping:
+#         cv2.imshow("image", image)
+#     elif cropping:
+#         cv2.rectangle(i, (x_start, y_start), (x_end, y_end), (255, 255, 0), 3)
+#     cv2.imshow("image", i)
+#     cv2.waitKey(0)
+#     # close all open windows
+#     cv2.destroyAllWindows()
