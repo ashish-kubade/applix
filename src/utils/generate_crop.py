@@ -1,63 +1,37 @@
 import cv2
-from PIL import Image
-from skimage import io
-import pandas as pd
-import numpy as np
-from PIL import Image
-import imagehash
-import cv2
-import glob
-from matplotlib import pyplot as plt
 import os
 import sys
 
-def mouse_crop(event, x, y, flags, param):
-    
-    # grab references to the global variables
-    global x_start, y_start, x_end, y_end, cropping
-    # if the left mouse button was DOWN, start RECORDING
-    # (x, y) coordinates and indicate that cropping is being
-    if event == cv2.EVENT_LBUTTONDOWN:
-        x_start, y_start, x_end, y_end = x, y, x, y
-        cropping = True
-    # Mouse is Moving
-    elif event == cv2.EVENT_MOUSEMOVE:
-        if cropping == True:
-            x_end, y_end = x, y
-    # if the left mouse button was released
-    elif event == cv2.EVENT_LBUTTONUP:
-        # record the ending (x, y) coordinates
-        x_end, y_end = x, y
-        cropping = False # cropping is finished
-        refPoint = [(x_start, y_start), (x_end, y_end)]
-        if len(refPoint) == 2: #when two points were found
-            roi = oriImage[refPoint[0][1]:refPoint[1][1], refPoint[0][0]:refPoint[1][0]]
-#             print(roi.shape)
-#             h= roi.shape[0] 
-#             w = roi.shape[1]
-            cv2.imshow("Cropped", roi)
-            #print(x, y)   
-            cv2.imwrite(crop_out_path,roi)
-            cv2.waitKey(0)
 
-images_root = sys.argv[1]
-crop_out_path = sys.argv[2]
-cropping = True
-images = os.listdir(images_root)
-
-
-for image in images:
-    image_path = os.path.join(images_root, image)
-
-    x_start, y_start, x_end, y_end = 0, 0, 0, 0
-
+def select_and_crop(image_path, output_folder):
     image = cv2.imread(image_path)
-    image = cv2.resize(image, (1024,1024))
-    oriImage = image.copy()
+    (h, w) = image.shape[:2]
+    image = cv2.resize(image, (w//4, h//4))
+    clone = image.copy()
+    rois = cv2.selectROIs("Select Regions", image, fromCenter=False, showCrosshair=True)
+    cv2.destroyAllWindows()
+    
+    base_name = os.path.splitext(os.path.basename(image_path))[0]
+    
+    for i, (x, y, w, h) in enumerate(rois):
+        crop = clone[y:y+h, x:x+w]
+        crop_filename = os.path.join(output_folder, f"{base_name}_crop_{i}.png")
+        cv2.imwrite(crop_filename, crop)
+        print(f"Saved: {crop_filename}")
 
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", mouse_crop)
 
-
-
-for 
+def process_multiple_images(image_folder, output_folder):
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(('png', 'jpg', 'jpeg'))]
+    
+    for image_file in image_files:
+        image_path = os.path.join(image_folder, image_file)
+        print(f"Processing: {image_path}")
+        select_and_crop(image_path, output_folder)
+    
+if __name__ == "__main__":
+    image_folder = sys.argv[1]  
+    output_folder = sys.argv[2] 
+    process_multiple_images(image_folder, output_folder)
