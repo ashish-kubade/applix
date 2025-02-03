@@ -8,17 +8,9 @@ import imagehash
 import cv2
 import glob
 from matplotlib import pyplot as plt
-
+import os
 import sys
 
-image_path = sys.argv[1]
-crop_out_path = sys.argv[2]
-cropping = True
-
-x_start, y_start, x_end, y_end = 0, 0, 0, 0
-image = cv2.imread(image_path)
-image = cv2.resize(image, (1024,1024))
-oriImage = image.copy()
 def mouse_crop(event, x, y, flags, param):
     
     # grab references to the global variables
@@ -47,15 +39,25 @@ def mouse_crop(event, x, y, flags, param):
             #print(x, y)   
             cv2.imwrite(crop_out_path,roi)
             cv2.waitKey(0)
-cv2.namedWindow("image")
-cv2.setMouseCallback("image", mouse_crop)
-# while True:
-#     i = image.copy()
-#     if not cropping:
-#         cv2.imshow("image", image)
-#     elif cropping:
-#         cv2.rectangle(i, (x_start, y_start), (x_end, y_end), (255, 255, 0), 3)
-#     cv2.imshow("image", i)
-#     cv2.waitKey(0)
-#     # close all open windows
-#     cv2.destroyAllWindows()
+
+images_root = sys.argv[1]
+crop_out_path = sys.argv[2]
+cropping = True
+images = os.listdir(images_root)
+
+
+for image in images:
+    image_path = os.path.join(images_root, image)
+
+    x_start, y_start, x_end, y_end = 0, 0, 0, 0
+
+    image = cv2.imread(image_path)
+    image = cv2.resize(image, (1024,1024))
+    oriImage = image.copy()
+
+    cv2.namedWindow("image")
+    cv2.setMouseCallback("image", mouse_crop)
+
+
+
+for 
