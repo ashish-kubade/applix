@@ -36,6 +36,7 @@ def detect_edges_and_contours(frame):
 
 def process_video(video_path, template_path, dump_path):
     """Process video frame-by-frame."""
+    print('Mathing template:', template_path, 'in video:', video_path)
     cap = cv2.VideoCapture(video_path)
     template = cv2.imread(template_path, 0)
     template = cv2.resize(template, None, fx=5, fy=5)
@@ -65,13 +66,50 @@ def process_video(video_path, template_path, dump_path):
     cap.release()
     cv2.destroyAllWindows()
 
+def process_image(image_path, template_path, dump_path):
+    """Process video frame-by-frame."""
+    image = cv2.imread(image_path)
+    template = cv2.imread(template_path, 0)
+    template = cv2.resize(template, None, fx=5, fy=5)
+    
+    
+
+        
+    processed = preprocess_frame(image)
+    match_loc, scale, confidence = template_matching(processed, template)
+    contours = detect_edges_and_contours(processed)
+    
+    if confidence > 0.88:  # Confidence threshold
+        h, w = template.shape
+        h, w = int(h * scale), int(w * scale)
+        # cv2.rectangle(image, match_loc, (match_loc[0] + w, match_loc[1] + h), (0, 255, 0), 2)
+        # print('located ', match_loc, scale, confidence, template_path)
+        # output_name = os.path.join(dump_path, os.path.basename(image_path)[:-4] + '__' + os.path.basename(template_path)[:-4] + 
+        #                             f'__{match_loc[0]}__{match_loc[1]}__{h}__{w}__{scale}__{confidence}.jpg')
+        # cv2.imwrite(output_name, image)
+        return [match_loc[0], match_loc[1], h, w, scale, confidence]
+    else:
+        return []
+
 # Example usage
-video_path = sys.argv[1]
+images_path = sys.argv[1]
 template_root = sys.argv[2]
 dump_path = sys.argv[3]
+images = os.listdir(images_path)
 templates = os.listdir(template_root)
+results = []
 
-for template in templates:
-    template_path = os.path.join(template_root, template)
-    
-    process_video(video_path, template_path, dump_path)
+for image in images:
+    image_path = os.path.join(images_path, image)
+    print('processing image', image)
+    for template in templates:
+        template_path = os.path.join(template_root, template)
+        
+        result = process_image(image_path, template_path, dump_path)
+        if len(result) > 0:
+            result += [image, template]
+            # print(result)
+            results.append(result)
+
+    # print(results)
+np.save('results', results)
