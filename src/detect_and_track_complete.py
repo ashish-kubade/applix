@@ -12,12 +12,12 @@ from collections import OrderedDict
 
 
 # Now, you should be able to import track_util functions
-from track_utils import track_utils
+from utils import track_utils
 
 ckpt_path = sys.argv[1]
 video_path = sys.argv[2]
 model = YOLO(ckpt_path)
-
+save_path = sys.argv[3]
 # Open the video file
 
 
@@ -55,13 +55,19 @@ def draw_optical_flow(flow, frame, step=16):
     
     return vis
 
-def optical_flow(video_path, method='farneback'):
+def optical_flow(video_path, method='farneback', save_path=None, save_name=None):
     bolts_dict = OrderedDict()
     bbox_logs = []
     prev_object_index = 0
     cap = cv2.VideoCapture(video_path)
     ret, prev_frame = cap.read()
-    
+
+
+    output_video = f"{save_name}_detected.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
     if not ret:
         print("Failed to read video")
         return
@@ -80,15 +86,27 @@ def optical_flow(video_path, method='farneback'):
         ret, frame = cap.read()
         if not ret:
             break
-        results = model.track(frame, persist=True)
+        results_generator = model.track(frame, persist=True, stream=True, project=save_path)
+        results = next(results_generator)    
         boxes = []
-        for i, box in enumerate(results[0].boxes.xywh):
-            x, y = int(box[0]), int(box[1])
-            w, h = int(box[2]), int(box[3])
-            x2, y2 = x + w, y + h
-            boxes.append([x, y, x2, y2, center_flow[0], center_flow[1]])
-        adjusted_results = track_utils.adjust_results(boxes)
-        bolts_dict, new_object_index = track_utils.update_dict(bolts_dict, adjusted_results, prev_object_index)
+        orig_frame = results.orig_img  # Get the current frame
+        for box in results.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            track_id = int(box.id) if box.id is not None else -1
+            cv2.rectangle(orig_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(orig_frame, f"ID: {track_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        out.write(frame)
+        if len(results) > 0:
+            
+            for i, box in enumerate(results[0].boxes.xywh):
+                x, y = int(box[0]), int(box[1])
+                w, h = int(box[2]), int(box[3])
+                x2, y2 = x + w, y + h
+                boxes.append([x, y, x2, y2, center_flow[0], center_flow[1]])
+            adjusted_results = track_utils.adjust_results(boxes)
+            bolts_dict, new_object_index = track_utils.update_dict(bolts_dict, adjusted_results, prev_object_index)
+        
         prev_object_index = new_object_index
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
@@ -128,7 +146,8 @@ def optical_flow(video_path, method='farneback'):
     cv2.destroyAllWindows()
     return bolts_dict, bbox_logs
 
+save_name = video_path.split('/')[-1].split('.')[0]
 # Example usage
-bolts_dict, bbox_logs = optical_flow(video_path, method='farneback')  # Change method to 'lucas_kanade' for LK method
+bolts_dict, bbox_logs = optical_flow(video_path, method='farneback', save_path=save_path, save_name=save_name)  # Change method to 'lucas_kanade' for LK method
 np.save('bolts_dict', bolts_dict)
 print('len ', len(bolts_dict))
