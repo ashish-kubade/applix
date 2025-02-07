@@ -8,8 +8,9 @@ def preprocess_frame(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     enhanced = clahe.apply(gray)
-    blurred = cv2.GaussianBlur(enhanced, (5,5), 0)
-    return blurred
+    # blurred = cv2.GaussianBlur(enhanced, (5,5), 0)
+    # return blurred
+    return enhanced
 
 def template_matching(frame, template):
     """Perform multi-scale template matching."""
@@ -71,22 +72,22 @@ def process_image(image_path, template_path, dump_path):
     image = cv2.imread(image_path)
     template = cv2.imread(template_path, 0)
     template = cv2.resize(template, None, fx=5, fy=5)
-    
-    
 
         
     processed = preprocess_frame(image)
     match_loc, scale, confidence = template_matching(processed, template)
     contours = detect_edges_and_contours(processed)
     
-    if confidence > 0.88:  # Confidence threshold
+    if confidence >= 0.9:  # Confidence threshold
         h, w = template.shape
         h, w = int(h * scale), int(w * scale)
-        # cv2.rectangle(image, match_loc, (match_loc[0] + w, match_loc[1] + h), (0, 255, 0), 2)
+        cv2.rectangle(image, match_loc, (match_loc[0] + w, match_loc[1] + h), (0, 255, 0), 2)
         # print('located ', match_loc, scale, confidence, template_path)
         # output_name = os.path.join(dump_path, os.path.basename(image_path)[:-4] + '__' + os.path.basename(template_path)[:-4] + 
         #                             f'__{match_loc[0]}__{match_loc[1]}__{h}__{w}__{scale}__{confidence}.jpg')
-        # cv2.imwrite(output_name, image)
+        output_name = os.path.join(dump_path, os.path.basename(image_path) + '_' + os.path.basename(template_path) + 
+                                   f'_{match_loc[0]}_{match_loc[1]}_{scale}_{confidence}.jpg')
+        cv2.imwrite(output_name, image)
         return [match_loc[0], match_loc[1], h, w, scale, confidence]
     else:
         return []
@@ -98,18 +99,41 @@ dump_path = sys.argv[3]
 images = os.listdir(images_path)
 templates = os.listdir(template_root)
 results = []
+from multiprocessing import Pool
 
-for image in images:
+def process_image_wrapper(args):
+    return process_image(*args)
+
+# for image in images:
+#     image_path = os.path.join(images_path, image)
+#     print('processing image', image)
+#     for template in templates:
+#         template_path = os.path.join(template_root, template)
+        
+#         result = process_image(image_path, template_path, dump_path)
+#         if len(result) > 0:
+#             result.insert(0, image)
+#             result.insert(1, template)
+#             # print(result)
+#             results.append(result)
+
+#     # print(results)
+# np.save('results', results)
+
+def process_images(image):
+    image_results = []
     image_path = os.path.join(images_path, image)
-    print('processing image', image)
     for template in templates:
         template_path = os.path.join(template_root, template)
-        
         result = process_image(image_path, template_path, dump_path)
         if len(result) > 0:
-            result += [image, template]
-            # print(result)
-            results.append(result)
+            result.insert(0, image)
+            result.insert(1, template)
+            image_results.append(result)
+    return image_results
 
-    # print(results)
-np.save('results', results)
+if __name__ == '__main__':
+    with Pool(processes=8) as pool:
+        results = pool.map(process_images, images)
+    results = [item for sublist in results for item in sublist]  # Flatten the list
+    np.save('results', results)
