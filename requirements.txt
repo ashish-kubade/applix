@@ -4,3 +4,8 @@ numpy
 pandas
 Pillow
 scikit-image
+supervision
+deep-sort-realtime
+ultralytics
+opencv-python
+
